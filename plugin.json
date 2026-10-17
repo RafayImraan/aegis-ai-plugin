@@ -1,0 +1,26 @@
+{
+  "schema_version": "v1",
+  "name": "Aegis AI Escrow & Verification Proxy",
+  "description": "Conditional execution and quality-check escrow proxy for x402 agent micro-payments.",
+  "version": "1.0.0",
+  "author": "Aegis AI Team",
+  "capabilities": [
+    {
+      "name": "inspect_and_pay",
+      "description": "Forward a request to a vendor and inspect its response. Payment settlement requires a configured x402 facilitator; demo mode only simulates payment acceptance.",
+      "endpoint": "/v1/inspect-and-pay",
+      "method": "POST",
+      "parameters": {
+        "target_url": "string (required) - Same-origin mock path, or HTTPS endpoint on VENDOR_ALLOWLIST",
+        "expected_key": "string (optional) - JSON key expected in the response to pass inspection",
+        "payload": "object (optional) - Body data to send to seller"
+      },
+      "payment": {
+        "scheme": "exact",
+        "protocol": "x402",
+        "price_usdc": "0.10",
+        "network": "base-sepolia"
+      }
+    }
+  ]
+}
