@@ -1,82 +1,68 @@
-# Aegis AI
+﻿# Aegis AI
 
-A small Express demo of an x402-style inspection proxy for PayBox agents. It requests a payment header, forwards an allowed vendor request, checks the response, and returns the inspected data or a 422 failure.
+Aegis AI is an HTTP proxy that inspects a vendor response before returning it to an AI agent. The demo shows the PayBox discovery manifest, a payment challenge, a successful vendor response, and a rejected vendor response.
 
-## Setup
+## Run locally
 
-```sh
+Requires Node.js 18 or newer.
+
+```bash
 npm install
-cp .env.example .env
+```
+
+Create a local environment file and start the server:
+
+```powershell
+Copy-Item .env.example .env
 npm start
 ```
 
-On Windows PowerShell, use `Copy-Item .env.example .env` instead of `cp`. The server listens on port 3000 by default.
+The server listens on `http://localhost:3000` in demo mode.
 
-## Manual test (Windows PowerShell)
+## Demo walkthrough
 
-Start the server in one terminal with `npm start`, then run these commands in a second PowerShell terminal.
+Use a second terminal while the server is running.
 
-### A. Discover the plugin manifest
+### Discover the plugin
 
-```powershell
-Invoke-RestMethod http://localhost:3000/.well-known/paybox.json
+```bash
+curl -i http://localhost:3000/.well-known/paybox.json
 ```
 
-Expected: JSON describing the Aegis AI capability.
+The endpoint returns the Aegis AI manifest and the `inspect_and_pay` capability.
 
-### B. Send a request without a payment header
+### Request without a payment header
 
-```powershell
-$body = @{ target_url = "/mock-vendor/good"; expected_key = "data" } | ConvertTo-Json
-
-try {
-  Invoke-RestMethod http://localhost:3000/v1/inspect-and-pay `
-    -Method Post `
-    -ContentType "application/json" `
-    -Body $body
-} catch {
-  $_.ErrorDetails.Message
-}
+```bash
+curl -i -X POST http://localhost:3000/v1/inspect-and-pay \
+  -H "Content-Type: application/json" \
+  -d '{"target_url":"/mock-vendor/good","expected_key":"data"}'
 ```
 
-Expected: HTTP 402 and payment instructions. PowerShell reports non-2xx responses as exceptions, so the `catch` prints the response body.
+The demo returns `402 Payment Required` with a demo challenge.
 
-### C. Simulate payment and inspect a successful vendor response
+### Inspect a successful vendor response
 
-```powershell
-$body = @{ target_url = "/mock-vendor/good"; expected_key = "data" } | ConvertTo-Json
-
-Invoke-RestMethod http://localhost:3000/v1/inspect-and-pay `
-  -Method Post `
-  -Headers @{ "payment-signature" = "demo" } `
-  -ContentType "application/json" `
-  -Body $body
+```bash
+curl -i -X POST http://localhost:3000/v1/inspect-and-pay \
+  -H "Content-Type: application/json" \
+  -H "PAYMENT-SIGNATURE: demo" \
+  -d '{"target_url":"/mock-vendor/good","expected_key":"data"}'
 ```
 
-Expected: HTTP 200 and the mock market analysis report. The header value `demo` only simulates payment acceptance; this does not release escrow or move funds.
+The good mock vendor returns JSON containing `data`; Aegis returns the inspected response with status `200`.
 
-### D. Simulate payment and inspect a failed vendor response
+### Reject a failed vendor response
 
-```powershell
-$body = @{ target_url = "/mock-vendor/bad"; expected_key = "data" } | ConvertTo-Json
-
-try {
-  Invoke-RestMethod http://localhost:3000/v1/inspect-and-pay `
-    -Method Post `
-    -Headers @{ "authorization" = "x402 demo" } `
-    -ContentType "application/json" `
-    -Body $body
-} catch {
-  $_.ErrorDetails.Message
-}
+```bash
+curl -i -X POST http://localhost:3000/v1/inspect-and-pay \
+  -H "Content-Type: application/json" \
+  -H "PAYMENT-SIGNATURE: demo" \
+  -d '{"target_url":"/mock-vendor/bad","expected_key":"data"}'
 ```
 
-Expected: HTTP 422 with `vendor_status: 500` and `escrow: "simulated_refund"`. This reports the demo failure path; no real refund is issued.
+The bad mock vendor returns an error. Aegis rejects it with status `422` and does not settle payment.
 
-The mock targets must be relative paths such as `/mock-vendor/good`. Remote targets require HTTPS and a hostname listed in `VENDOR_ALLOWLIST`. Redirects are disabled, request size and time are bounded, and local/private targets are rejected.
+## Payment behavior
 
-## Payment and escrow boundary
-
-This MVP does **not** implement real escrow, x402 signature verification, settlement, or refunds. In default `PAYMENT_MODE=demo`, a non-empty `PAYMENT-SIGNATURE` or `authorization: x402 ...` header is merely treated as a simulated payment signal. Success says `demo-accepted` and `not_settled`; failure says a simulated refund was requested. No funds move. The `PAYMENT-REQUIRED` details are a demo challenge and must be aligned to the chosen x402 facilitator/wallet protocol before marketplace use.
-
-Before handling real payments, implement a provider-specific facilitator adapter that verifies the signed payment, settles only after inspection passes, and issues or coordinates a refund on failure. The server deliberately fails closed in `PAYMENT_MODE=facilitator` until that adapter exists. Protect facilitator credentials, define replay/idempotency handling, and use a dedicated payment address. Do not present this demo as production-ready custody or escrow software.
+The walkthrough uses demo mode. The `PAYMENT-SIGNATURE: demo` header is a demonstration signal only: no payment is verified, no funds move, and no refund is issued. Aegis demonstrates conditional settlement behavior; it does not hold funds in escrow.

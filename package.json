@@ -2,14 +2,22 @@
   "name": "aegis-ai-plugin",
   "version": "1.0.0",
   "private": true,
-  "description": "Demo x402-style conditional inspection proxy for PayBox agents",
+  "description": "x402 exact payment inspection proxy for PayBox agents",
   "main": "server.js",
-  "scripts": { "start": "node server.js" },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test",
+    "lint": "node --check server.js && node --check test/server.test.js"
+  },
   "engines": { "node": ">=18" },
   "dependencies": {
-    "axios": "^1.7.9",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "ipaddr.js": "1.9.1",
+    "@x402/core": "2.28.0",
+    "@x402/evm": "2.28.0",
+    "@x402/express": "2.28.0",
+    "@x402/extensions": "2.28.0"
   }
 }

@@ -1,25 +1,30 @@
 {
   "schema_version": "v1",
-  "name": "Aegis AI Escrow & Verification Proxy",
-  "description": "Conditional execution and quality-check escrow proxy for x402 agent micro-payments.",
-  "version": "1.0.0",
+  "name": "Aegis AI Inspection Proxy",
+  "description": "An x402-protected proxy that checks allowlisted vendor JSON responses before settling payment.",
+  "version": "1.1.0",
   "author": "Aegis AI Team",
+  "manifest_note": "Project metadata for the discovery endpoint. PayBox marketplace registration schema and submission process have not been independently verified.",
   "capabilities": [
     {
       "name": "inspect_and_pay",
-      "description": "Forward a request to a vendor and inspect its response. Payment settlement requires a configured x402 facilitator; demo mode only simulates payment acceptance.",
+      "description": "Forward a request to an allowlisted vendor. In x402 mode, exact payment is verified before the request and settled only after inspection passes; failed inspection is not settled. This is conditional settlement, not escrow.",
       "endpoint": "/v1/inspect-and-pay",
       "method": "POST",
       "parameters": {
-        "target_url": "string (required) - Same-origin mock path, or HTTPS endpoint on VENDOR_ALLOWLIST",
-        "expected_key": "string (optional) - JSON key expected in the response to pass inspection",
-        "payload": "object (optional) - Body data to send to seller"
+        "target_url": "string (required) - HTTPS endpoint on an exact VENDOR_ALLOWLIST hostname resolving only to public IPv4",
+        "expected_key": "string (optional) - Dotted JSON key path required in the vendor response",
+        "payload": "object (optional) - JSON body forwarded to the vendor"
       },
       "payment": {
-        "scheme": "exact",
         "protocol": "x402",
+        "version": 2,
+        "scheme": "exact",
+        "flow": "authorization",
         "price_usdc": "0.10",
-        "network": "base-sepolia"
+        "network": "eip155:84532",
+        "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        "settlement": "after successful response inspection; no charge on inspection failure"
       }
     }
   ]
